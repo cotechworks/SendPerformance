@@ -19,9 +19,12 @@ WindowsのCPU・メモリ・GPU使用率を取得し、COMポートへASCII文�
 | ファイル | 役割 |
 | --- | --- |
 | SendPerformance.py | 指標取得、シリアル送信、トレイ、起動引数 |
-| config_dialog.py | TkinterによるConfig画面とメインループ |
+| src/config_dialog.py | TkinterによるConfig画面とメインループ |
+| src/disk_diagnostics.py | COM接続なしの診断 |
+| src/__init__.py | 補助モジュールのパッケージ |
 | icon.png | トレイ画像。スクリプトと同じ場所から読み込む |
 | Build.bat | Nuitka standaloneビルド |
+| requirements.txt | 実行時の直接依存とバージョン |
 | requirements-build.txt | Nuitka 4.3.5の指定 |
 | doc/ | 要件・構成・決定・タスク |
 | dist/SendPerformance.dist/ | ビルド時の配布フォルダ |
@@ -42,10 +45,10 @@ Windows、Python、利用可能なCOMポート、Windows PowerShellを使用す�
 新規環境の準備例:
 ```powershell
 py -3.10 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install pystray Pillow schedule psutil pyserial
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe -m pip install -r requirements-build.txt
 ```
-実行時依存のバージョン固定ファイルは現状存在しない。上記はソースのimportに基づく準備手順であり、新規環境での再現性は未確認。
+requirements.txtには現在の仮想環境で使用する実行時の直接依存5件をバージョン固定で記載する。推移的依存を含む完全なロックファイルではない。新規環境での再構築は未確認。
 
 ```powershell
 .\.venv\Scripts\python.exe SendPerformance.py
@@ -139,7 +142,7 @@ test/test_send_performance.pyに開発側で実行できるテストを配置し
 | 定期処理 | 独立Schedulerとスレッドでタスク呼び出しを確認 |
 | 既存exe | PNGのバイト一致、別フォルダでの--help、無効ポート指定時の画像読み込み後の接続処理到達を確認 |
 
-exe未作成、またはexeがSendPerformance.py・config_dialog.py・Build.batより古い場合は、exeテスト群をスキップする。必要ならBuild.batで作成して再実行する。既存exeのテストは再ビルド成功や最新ソースとの一致を保証しない。
+exe未作成、またはexeがSendPerformance.py・src配下のモジュール・Build.batより古い場合は、exeテスト群をスキップする。必要ならBuild.batで作成して再実行する。既存exeのテストは再ビルド成功や最新ソースとの一致を保証しない。
 今回、実機COMポート・GPU実測・実GUI・配布先は検証していない。利用者確認T-004・T-005の完了報告とは区別する。詳細は[タスク管理](doc/tasks.md)を参照する。
 
 ### Config追加後の検証（2026-11-17）
@@ -195,6 +198,11 @@ Configで出力3を「ディスクのアクティブ時間」にして「適用�
 診断モードで80前後・通常TXの3列目も80前後なら受信・表示側を、disk acquisition failedなら権限・カウンター・タイムアウトを、outputsが想定と違うなら適用操作・起動中の版を確認する。
 
 診断機能追加後の検証（2026-11-17）: Build.batでexe再ビルド成功。最大64MiB・8秒の一時負荷でexe診断CSVの3列目が82・81・81%、負荷停止後1%となった。実書き込みは約43.6MiB。一時ファイルは削除済み。自動テスト40件成功、スキップなし。同日、利用者より最新ビルドで正常動作するとの報告を受領し、T-011・T-013を完了とした。ビルド前のexeを検証していた可能性はあるが、根本原因としては未確定である。
+
+### srcへの移動後の検証（2026-11-17）
+SendPerformance.pyをルートに残し、補助モジュールをsrcパッケージへ移動した。テスト・負荷スクリプトはtest/に維持する。
+起動・ビルドの入口は変わらず、Build.batはSendPerformance.pyから静的importをたどって補助モジュールを取り込む構成である。
+自動テスト37件とSendPerformance.py --helpが成功した。旧exeのテスト群は1グループをスキップ。移動後のexeは未再ビルド。
 
 ## 管理資料
 - [要件](doc/requirements.md)

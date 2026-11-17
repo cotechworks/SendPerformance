@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import config_dialog as dialog
+from src import config_dialog as dialog
 
 
 class DialogTests(unittest.TestCase):

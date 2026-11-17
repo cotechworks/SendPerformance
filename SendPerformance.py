@@ -9,7 +9,7 @@ import argparse
 import logging
 import serial
 from pathlib import Path
-from config_dialog import OUTPUT_CHOICES, run_config_loop
+from src.config_dialog import OUTPUT_CHOICES, run_config_loop
 
 class SendPerformance:
     def __init__(self, image, port='COM15', baudrate=115200):
@@ -165,7 +165,7 @@ if __name__ == '__main__':
         logging.basicConfig(filename=args.debug_log, level=logging.DEBUG,
                             format='%(asctime)s %(levelname)s %(message)s', encoding='utf-8')
     if args.diagnose_disk:
-        from disk_diagnostics import diagnose_disk
+        from src.disk_diagnostics import diagnose_disk
         raise SystemExit(diagnose_disk())
     system_tray = SendPerformance(image=Path(__file__).resolve().with_name('icon.png'), port=args.port, baudrate=args.baudrate)
     system_tray.runProgram()

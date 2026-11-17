@@ -232,7 +232,9 @@ class ExecutableTests(unittest.TestCase):
         cls.exe = ROOT / 'dist' / 'SendPerformance.dist' / 'SendPerformance.exe'
         if cls.exe.exists() and cls.exe.stat().st_mtime < max(
             (ROOT / 'SendPerformance.py').stat().st_mtime,
-            (ROOT / 'config_dialog.py').stat().st_mtime,
+            (ROOT / 'src' / 'config_dialog.py').stat().st_mtime,
+            (ROOT / 'src' / 'disk_diagnostics.py').stat().st_mtime,
+            (ROOT / 'src' / '__init__.py').stat().st_mtime,
             (ROOT / 'Build.bat').stat().st_mtime,
         ):
             raise unittest.SkipTest('exeがソースより古い。再ビルド後に確認する')
