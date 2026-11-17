@@ -7,6 +7,7 @@ import psutil
 import subprocess
 import argparse
 import serial
+from pathlib import Path
 
 class SendPerformance:
     def __init__(self, image, port='COM15', baudrate=115200):
@@ -94,5 +95,5 @@ if __name__ == '__main__':
     parser.add_argument('--port', default='COM15', help='送信先COMポート（既定: COM15）')
     parser.add_argument('--baudrate', type=int, default=115200)
     args = parser.parse_args()
-    system_tray = SendPerformance(image="icon.jpg", port=args.port, baudrate=args.baudrate)
+    system_tray = SendPerformance(image=Path(__file__).resolve().with_name('icon.jpg'), port=args.port, baudrate=args.baudrate)
     system_tray.runProgram()
