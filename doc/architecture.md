@@ -21,9 +21,12 @@
 | serial_lock | Taskと定期処理のシリアル書き込みを直列化 |
 | icon | pystrayのトレイオブジェクト |
 | config_dialog.py | run_config_loopで表示要求を処理し、show_output_configで3つのComboboxを表示 |
-| outputs | 3つの指標名を保持するtuple。初期値はCPU・メモリ・GPU |
+| outputs | 3つの指標名を保持するtuple。候補はCPU・メモリ・GPU・ディスクのアクティブ時間。初期値はCPU・メモリ・GPU |
 | config_stop / config_requested | 終了要求・表示または前面化要求をスレッド間で渡すEvent |
 | Build.bat | .venvのPythonからNuitkaを実行。tk-interプラグインでTcl/Tkを同梱 |
+| disk_diagnostics.py | COM未接続の診断。実際のdoTaskをloop://へ送信し、CPU・メモリ・ディスクの5行を表示 |
+| test/disk_load.py | T-011用の時間・容量制限付きディスク負荷。標準ライブラリのみ。専用一時ファイルを削除して終了 |
+| test/test_disk_load.py | 上限検証、既存ファイル保持、空き容量不足、Ctrl+C・例外時の削除を確認 |
 | requirements-build.txt | Nuitka==4.3.5 |
 | icon.png | PILで開くトレイ用画像 |
 
@@ -34,10 +37,11 @@
 | メソッド | 引数・戻り値 | 処理・副作用・主な例外 |
 | --- | --- | --- |
 | __init__ | image, port=COM15, baudrate=115200 / None | Serial・ロック・画像・メニューを準備。画像読み込み等の例外は伝播 |
-| doTask | なし / None | CPU・メモリ・GPU取得、計測開始前にロック内で設定を取得し、3列を組み立ててロック内でwrite。SerialException等は伝播 |
+| doTask | なし / None | CPU・メモリ・GPUと、選択時だけディスクのアクティブ時間を取得。計測開始前にロック内で設定を取得し、3列を組み立ててロック内でwrite。SerialException等は伝播 |
 | setOutputs | outputs / None | 指標名3個を検証し、ロック内で一括反映。不正値はValueError |
 | getOutputs | なし / tuple | ロック内で現設定を返す |
 | showConfig | なし / None | Eventで表示要求。表示中は前面化。終了要求後は無視 |
+| getDiskUsage | なし / 数値 | CIMの物理ディスク（_Total除外）から100-PercentIdleTimeの最大値を取得し0～100に制限。OS・サブプロセス・変換エラーは0 |
 | getGpuUsage | なし / 数値 | PowerShellを最大5秒待機。合計したエンジン使用率の最大を0～100に制限。OSError、SubprocessError、ValueErrorを0へ変換 |
 | runSchedule | なし / None | 0.1秒間隔のジョブをグローバルscheduleへ登録しrun_pendingを実行。doTask例外は捕捉しない |
 | stopProgram | icon / None | status=False、Config終了要求、トレイ停止 |
@@ -81,7 +85,7 @@ stateDiagram-v2
 | schedule | 定期実行 |
 | psutil | CPU・メモリ |
 | pyserial | シリアル送信 |
-| Windows PowerShell / GPU CIMカウンター | GPUエンジン情報 |
+| Windows PowerShell / CIMカウンター | GPUエンジンと物理ディスクのアイドル時間 |
 | Nuitka・Cコンパイラ | exe生成時のみ |
 
 ## 制約

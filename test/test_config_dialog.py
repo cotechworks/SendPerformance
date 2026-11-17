@@ -13,7 +13,7 @@ class DialogTests(unittest.TestCase):
     def run_dialog(self, action):
         root = Mock()
         variables = [Mock(), Mock(), Mock()]
-        for variable, value in zip(variables, ('GPU', 'CPU', 'CPU')):
+        for variable, value in zip(variables, ('ディスクのアクティブ時間', 'CPU', 'CPU')):
             variable.get.return_value = value
         buttons = {}
         stop, focus = threading.Event(), threading.Event()
@@ -32,12 +32,12 @@ class DialogTests(unittest.TestCase):
         self.assertEqual(combo.call_count, 3)
         for call in combo.call_args_list:
             self.assertEqual(call.kwargs['state'], 'readonly')
-            self.assertEqual(call.kwargs['values'], ('CPU', 'メモリ', 'GPU'))
+            self.assertEqual(call.kwargs['values'], ('CPU', 'メモリ', 'GPU', 'ディスクのアクティブ時間'))
         return root, on_apply
 
     def test_apply_selected_outputs(self):
         root, apply = self.run_dialog(lambda root, buttons, stop, focus: buttons['適用']())
-        apply.assert_called_once_with(('GPU', 'CPU', 'CPU'))
+        apply.assert_called_once_with(('ディスクのアクティブ時間', 'CPU', 'CPU'))
         root.destroy.assert_called_once()
 
     def test_cancel_does_not_apply(self):
@@ -75,7 +75,7 @@ class NativeDialogTests(unittest.TestCase):
                 try:
                     frame = root.winfo_children()[0]
                     combos = [w for w in frame.winfo_children() if w.winfo_class() == 'TCombobox']
-                    for combo, value in zip(combos, ('GPU', 'CPU', 'CPU')):
+                    for combo, value in zip(combos, ('ディスクのアクティブ時間', 'CPU', 'CPU')):
                         combo.set(value)
                     button = next(w for w in frame.winfo_children()
                                   if w.winfo_class() == 'TButton' and w.cget('text') == '適用')
@@ -92,7 +92,7 @@ class NativeDialogTests(unittest.TestCase):
                     threading.Event(), threading.Event(),
                 )
         self.assertEqual(failures, [])
-        self.assertEqual(selected, [('GPU', 'CPU', 'CPU')] * 2)
+        self.assertEqual(selected, [('ディスクのアクティブ時間', 'CPU', 'CPU')] * 2)
 
     def test_real_config_loop_applies_and_exits(self):
         original_top = dialog.tk.Toplevel
@@ -107,7 +107,7 @@ class NativeDialogTests(unittest.TestCase):
                 frame = root.winfo_children()[0]
                 combos = [w for w in frame.winfo_children() if w.winfo_class() == 'TCombobox']
                 for combo in combos:
-                    combo.set('GPU')
+                    combo.set('ディスクのアクティブ時間')
                 button = next(w for w in frame.winfo_children()
                               if w.winfo_class() == 'TButton' and w.cget('text') == '適用')
                 button.invoke()
@@ -127,4 +127,4 @@ class NativeDialogTests(unittest.TestCase):
         finally:
             watchdog.cancel()
             watchdog.join()
-        self.assertEqual(selected, [('GPU', 'GPU', 'GPU')])
+        self.assertEqual(selected, [('ディスクのアクティブ時間', 'ディスクのアクティブ時間', 'ディスクのアクティブ時間')])

@@ -2,7 +2,7 @@
 import tkinter as tk
 from tkinter import ttk
 
-OUTPUT_CHOICES = ('CPU', 'メモリ', 'GPU')
+OUTPUT_CHOICES = ('CPU', 'メモリ', 'GPU', 'ディスクのアクティブ時間')
 
 
 def show_output_config(outputs, on_apply, stop_event, focus_event, master=None):
@@ -24,7 +24,7 @@ def show_output_config(outputs, on_apply, stop_event, focus_event, master=None):
             variables.append(variable)
             ttk.Combobox(
                 frame, textvariable=variable, values=OUTPUT_CHOICES,
-                state='readonly', width=16,
+                state='readonly', width=26,
             ).grid(row=index + 1, column=1, pady=4)
 
         def close():
