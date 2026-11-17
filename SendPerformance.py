@@ -34,7 +34,7 @@ class SendPerformance:
                     MenuItem('Exit', self.stopProgram),
                 )
 
-        self.icon = Icon(name='nameTray', title='titleTray', icon=image, menu=menu)
+        self.icon = Icon(name='nameTray', title='SendPerformance', icon=image, menu=menu)
 
     def doTask(self):
         with self.serial_lock:
