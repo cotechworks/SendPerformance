@@ -95,5 +95,5 @@ if __name__ == '__main__':
     parser.add_argument('--port', default='COM15', help='送信先COMポート（既定: COM15）')
     parser.add_argument('--baudrate', type=int, default=115200)
     args = parser.parse_args()
-    system_tray = SendPerformance(image=Path(__file__).resolve().with_name('icon.jpg'), port=args.port, baudrate=args.baudrate)
+    system_tray = SendPerformance(image=Path(__file__).resolve().with_name('icon.png'), port=args.port, baudrate=args.baudrate)
     system_tray.runProgram()

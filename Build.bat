@@ -5,7 +5,7 @@ cd /d "%~dp0"
   --mode=standalone ^
   --windows-console-mode=attach ^
   --include-module=pystray._win32 ^
-  --include-data-files=icon.jpg=icon.jpg ^
+  --include-data-files=icon.png=icon.png ^
   --output-dir=dist ^
   --assume-yes-for-downloads ^
   SendPerformance.py
