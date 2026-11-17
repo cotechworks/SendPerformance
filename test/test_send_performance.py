@@ -100,24 +100,18 @@ function Get-CimInstance {
         with patch.object(app.subprocess, 'run', side_effect=run_fixture):
             self.assertEqual(app.SendPerformance.getGpuUsage(), 70)
 
-    def test_menu_task_and_exit_callbacks(self):
+    def test_menu_config_and_exit_callbacks(self):
         # Iconの生成引数から、実際のMenuItemに登録されたコールバックを呼ぶ。
         with patch.object(app, 'Icon') as icon:
             obj = app.SendPerformance(ROOT / 'icon.png', settings_path=self.settings_path)
         self.addCleanup(obj.serial.close)
         self.addCleanup(icon.call_args.kwargs['icon'].close)
         items = list(icon.call_args.kwargs['menu'].items)
-        self.assertEqual([item.text for item in items], ['Task', 'Config', 'Exit'])
-        obj.serial = Mock()
-        with patch.object(app.psutil, 'cpu_percent', return_value=1), \
-             patch.object(app.psutil, 'virtual_memory', return_value=SimpleNamespace(percent=2)), \
-             patch.object(obj, 'getGpuUsage', return_value=3):
-            items[0](obj.icon)
-        obj.serial.write.assert_called_once_with(b'1,2,3\r\n')
+        self.assertEqual([item.text for item in items], ['Config', 'Exit'])
         obj.status = True
-        items[1](obj.icon)
+        items[0](obj.icon)
         self.assertTrue(obj.config_requested.is_set())
-        items[2](obj.icon)
+        items[1](obj.icon)
         self.assertFalse(obj.status)
         obj.icon.stop.assert_called_once()
 

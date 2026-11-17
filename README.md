@@ -13,7 +13,7 @@
 - [管理資料](#管理資料)
 
 ## 概要
-WindowsのCPU・メモリ・GPU使用率を取得し、COMポートへASCII文字列として送信する。システムトレイで動作し、Taskで追加送信、Configで出力設定、Exitで終了する。外部APIやデータベースは使用しない。
+WindowsのCPU・メモリ・GPU使用率を取得し、COMポートへASCII文字列として送信する。システムトレイで動作し、起動後に自動送信し、Configで出力設定、Exitで終了する。外部APIやデータベースは使用しない。
 
 ## 構成
 | ファイル | 役割 |
@@ -37,7 +37,6 @@ flowchart LR
   CPU["psutil: CPU・メモリ"] --> Task["doTask"]
   GPU["PowerShell / GPU CIMカウンター"] --> Task
   Timer["schedule / ワーカースレッド"] --> Task
-  Tray["トレイ Task"] --> Task
   Task --> Port["pyserial / COMポート"]
   Port --> Device["外部受信機"]
 ```
@@ -174,7 +173,7 @@ test/test_send_performance.pyに開発側で実行できるテストを配置し
 | 送信形式 | loop://でCPU・メモリ・GPUの順序、ASCII、カンマ、CRLF、GPU取得失敗時0を確認 |
 | GPU | 結果差し替えで数値・上下限・不正値・OSエラー・終了エラー・タイムアウトを確認 |
 | GPU集計 | 実PowerShellでCIM問い合わせだけを固定データに差し替え、同一エンジンの合計と最大値選択を確認 |
-| Task・Exit | GUIをモック化し、実MenuItemのコールバック、通常終了・例外時のワーカー待機とポートcloseを確認 |
+| Config・Exit | GUIをモック化し、実MenuItemのコールバック、通常終了・例外時のワーカー待機とポートcloseを確認 |
 | 定期処理 | 独立Schedulerとスレッドでタスク呼び出しを確認 |
 | 既存exe | PNGのバイト一致、別フォルダでの--help、無効ポート指定時の画像読み込み後の接続処理到達を確認 |
 

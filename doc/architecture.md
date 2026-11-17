@@ -1,5 +1,5 @@
 # 構成・設計
-更新日: 2026-11-17
+更新日: 2026-11-18
 
 ## 目次
 - [全体構成](#全体構成)
@@ -18,7 +18,7 @@
 | SendPerformance.py | エントリーポイントとSendPerformanceクラス |
 | status | 定期実行継続フラグ |
 | serial | 未接続状態で生成し、runProgramで開くSerialオブジェクト |
-| serial_lock | Taskと定期処理のシリアル書き込みを直列化 |
+| serial_lock | 定期送信とConfigによる設定保存・接続切替を排他制御 |
 | icon | pystrayのトレイオブジェクト |
 | src/settings.py | 保存先解決、3枠とCOM形式の検証、outputsとportの設定読込、一時ファイルからの置換保存 |
 | src/__init__.py | 補助モジュールをsrcパッケージとして扱う |
@@ -62,7 +62,6 @@ flowchart TD
   Main --> Run["runProgram"]
   Run --> Schedule["runSchedule"]
   Schedule --> Task["doTask"]
-  TrayTask["トレイ Task"] --> Task
   Task --> GPU["getGpuUsage"]
   TrayExit["トレイ Exit"] --> Stop["stopProgram"]
 ```
@@ -103,7 +102,7 @@ stateDiagram-v2
 ## 制約
 - Windows固有のPowerShellとCREATE_NO_WINDOWを使用する。
 - 計測・PowerShell起動は同期処理で、固定周期や即時終了を保証しない。
-- ロック対象はwriteだけであり、指標取得は同時実行され得る。
+- 設定取得・シリアル書き込みとConfigの設定保存・接続切替は同じロックで保護する。指標取得はロック外で行う。
 - 起動時のCOM接続とワーカー開始はトレイのtry/finallyより前にある。
 - シリアル切断の自動再接続はなく、Config適用で手動接続する。ジョブ解除はなく、1プロセスでの再実行・複数インスタンス管理は未整備。
 - 設計変更案の採否は[決定記録](decisions.md)で扱い、現行実装と区別する。

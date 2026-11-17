@@ -31,7 +31,6 @@ class SendPerformance:
         image = Image.open(image)
         ## 右クリックで表示されるメニュー
         menu = Menu(
-                    MenuItem('Task', self.doTask),
                     MenuItem('Config', self.showConfig),
                     MenuItem('Exit', self.stopProgram),
                 )
@@ -160,7 +159,7 @@ class SendPerformance:
             return 0
     
     def runSchedule(self):
-        ## 5秒毎にタスクを実行する。
+        ## 処理時間に加え、0.1秒間隔で次の送信を実行する。
         schedule.every(0.1).seconds.do(self.doTask)
         ## status が True である間実行する。
         while self.status:
