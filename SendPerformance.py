@@ -8,6 +8,7 @@ import subprocess
 import argparse
 import serial
 from pathlib import Path
+from config_dialog import run_config_loop
 
 class SendPerformance:
     def __init__(self, image, port='COM15', baudrate=115200):
@@ -15,23 +16,48 @@ class SendPerformance:
         self.serial = serial.Serial(port=None, baudrate=baudrate, write_timeout=1)
         self.serial.port = port
         self.serial_lock = threading.Lock()
+        self.outputs = ('CPU', 'メモリ', 'GPU')
+        self.config_stop = threading.Event()
+        self.config_requested = threading.Event()
 
         ## アイコンの画像
         image = Image.open(image)
         ## 右クリックで表示されるメニュー
         menu = Menu(
                     MenuItem('Task', self.doTask),
+                    MenuItem('Config', self.showConfig),
                     MenuItem('Exit', self.stopProgram),
                 )
 
         self.icon = Icon(name='nameTray', title='titleTray', icon=image, menu=menu)
 
     def doTask(self):
+        with self.serial_lock:
+            outputs = self.outputs
         cpu = psutil.cpu_percent(interval=0.5)
         mem = psutil.virtual_memory()
         gpu = self.getGpuUsage()
+        values = {'CPU': cpu, 'メモリ': mem.percent, 'GPU': gpu}
+        payload = (','.join(str(values[name]) for name in outputs) + '\r\n').encode('ascii')
         with self.serial_lock:
-            self.serial.write(f'{cpu},{mem.percent},{gpu}\r\n'.encode('ascii'))
+            self.serial.write(payload)
+
+    def setOutputs(self, outputs):
+        """3出力を一括更新する。不正な設定は送信へ反映しない。"""
+        outputs = tuple(outputs)
+        if len(outputs) != 3 or any(name not in ('CPU', 'メモリ', 'GPU') for name in outputs):
+            raise ValueError('出力はCPU・メモリ・GPUから3つ選択してください')
+        with self.serial_lock:
+            self.outputs = outputs
+
+    def getOutputs(self):
+        with self.serial_lock:
+            return self.outputs
+
+    def showConfig(self):
+        """トレイスレッドからメインスレッドへ表示を要求する。"""
+        if not self.config_stop.is_set():
+            self.config_requested.set()
 
     @staticmethod
     def getGpuUsage():
@@ -69,6 +95,7 @@ class SendPerformance:
     
     def stopProgram(self, icon):
         self.status = False
+        self.config_stop.set()
 
         ## 停止
         self.icon.stop()
@@ -83,10 +110,15 @@ class SendPerformance:
 
         ## 実行
         try:
-            self.icon.run()
+            self.icon.run_detached()
+            run_config_loop(
+                self.config_stop, self.config_requested, self.getOutputs, self.setOutputs,
+            )
         finally:
             self.status = False
+            self.config_stop.set()
             task_thread.join()
+            self.icon.stop()
             self.serial.close()
 
 

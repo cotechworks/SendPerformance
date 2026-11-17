@@ -102,7 +102,7 @@ function Get-CimInstance {
         self.addCleanup(obj.serial.close)
         self.addCleanup(icon.call_args.kwargs['icon'].close)
         items = list(icon.call_args.kwargs['menu'].items)
-        self.assertEqual([item.text for item in items], ['Task', 'Exit'])
+        self.assertEqual([item.text for item in items], ['Task', 'Config', 'Exit'])
         obj.serial = Mock()
         with patch.object(app.psutil, 'cpu_percent', return_value=1), \
              patch.object(app.psutil, 'virtual_memory', return_value=SimpleNamespace(percent=2)), \
@@ -111,6 +111,8 @@ function Get-CimInstance {
         obj.serial.write.assert_called_once_with(b'1,2,3\r\n')
         obj.status = True
         items[1](obj.icon)
+        self.assertTrue(obj.config_requested.is_set())
+        items[2](obj.icon)
         self.assertFalse(obj.status)
         obj.icon.stop.assert_called_once()
 
@@ -136,7 +138,9 @@ function Get-CimInstance {
             release_worker.set()
             if fail:
                 raise RuntimeError('tray failed')
-        obj.icon.run.side_effect = tray
+        gui = patch.object(app, 'run_config_loop', side_effect=lambda *args: tray())
+        gui.start()
+        self.addCleanup(gui.stop)
         obj.serial.close.side_effect = lambda: self.assertTrue(worker_finished.is_set())
         if fail:
             with self.assertRaisesRegex(RuntimeError, 'tray failed'):
@@ -165,10 +169,73 @@ function Get-CimInstance {
         obj.doTask.assert_called_once()
 
 
+    def test_output_reordering_and_duplicates(self):
+        obj = self.make_instance()
+        obj.serial = serial.serial_for_url('loop://', timeout=1)
+        self.addCleanup(obj.serial.close)
+        with patch.object(app.psutil, 'cpu_percent', return_value=10), \
+             patch.object(app.psutil, 'virtual_memory', return_value=SimpleNamespace(percent=20)), \
+             patch.object(obj, 'getGpuUsage', return_value=30):
+            for outputs, expected in [
+                (('GPU', 'CPU', 'メモリ'), b'30,10,20\r\n'),
+                (('メモリ', 'メモリ', 'CPU'), b'20,20,10\r\n'),
+            ]:
+                obj.setOutputs(outputs)
+                obj.doTask()
+                self.assertEqual(obj.serial.readline(), expected)
+
+    def test_invalid_output_preserves_previous_setting(self):
+        obj = self.make_instance()
+        for outputs in [(), ('CPU',), ('CPU', 'GPU', 'メモリ', 'CPU'), ('CPU', 'unknown', 'GPU')]:
+            with self.subTest(outputs=outputs):
+                with self.assertRaises(ValueError):
+                    obj.setOutputs(outputs)
+                self.assertEqual(obj.outputs, ('CPU', 'メモリ', 'GPU'))
+
+    def test_setting_change_during_measurement_is_atomic(self):
+        obj = self.make_instance()
+        obj.serial = serial.serial_for_url('loop://', timeout=1)
+        self.addCleanup(obj.serial.close)
+        def cpu(**kwargs):
+            obj.setOutputs(('GPU', 'GPU', 'GPU'))
+            return 10
+        with patch.object(app.psutil, 'cpu_percent', side_effect=cpu), \
+             patch.object(app.psutil, 'virtual_memory', return_value=SimpleNamespace(percent=20)), \
+             patch.object(obj, 'getGpuUsage', return_value=30):
+            obj.doTask()
+            self.assertEqual(obj.serial.readline(), b'10,20,30\r\n')
+            obj.doTask()
+            self.assertEqual(obj.serial.readline(), b'30,30,30\r\n')
+
+    def test_config_requests_are_coalesced(self):
+        obj = self.make_instance()
+        obj.showConfig()
+        obj.showConfig()
+        self.assertTrue(obj.config_requested.is_set())
+        self.assertEqual(obj.getOutputs(), ('CPU', 'メモリ', 'GPU'))
+
+    def test_config_cannot_open_after_exit(self):
+        obj = self.make_instance()
+        obj.stopProgram(obj.icon)
+        obj.showConfig()
+        self.assertFalse(obj.config_requested.is_set())
+
+    def test_exit_signals_config_loop(self):
+        obj = self.make_instance()
+        obj.stopProgram(obj.icon)
+        self.assertTrue(obj.config_stop.is_set())
+
+
 class ExecutableTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.exe = ROOT / 'dist' / 'SendPerformance.dist' / 'SendPerformance.exe'
+        if cls.exe.exists() and cls.exe.stat().st_mtime < max(
+            (ROOT / 'SendPerformance.py').stat().st_mtime,
+            (ROOT / 'config_dialog.py').stat().st_mtime,
+            (ROOT / 'Build.bat').stat().st_mtime,
+        ):
+            raise unittest.SkipTest('exeがソースより古い。再ビルド後に確認する')
         if not cls.exe.exists():
             raise unittest.SkipTest('exe未作成。Build.batを実行してから再テストする')
 

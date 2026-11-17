@@ -5,6 +5,7 @@ cd /d "%~dp0"
   --mode=standalone ^
   --windows-console-mode=attach ^
   --include-module=pystray._win32 ^
+  --enable-plugin=tk-inter ^
   --include-data-files=icon.png=icon.png ^
   --output-dir=dist ^
   --assume-yes-for-downloads ^
