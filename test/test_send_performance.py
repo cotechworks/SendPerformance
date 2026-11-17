@@ -15,9 +15,14 @@ import serial
 
 
 class PerformanceTests(unittest.TestCase):
+    def setUp(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.settings_path = Path(folder.name) / 'setting.json'
+
     def make_instance(self):
         with patch.object(app, 'Icon') as icon:
-            obj = app.SendPerformance(ROOT / 'icon.png')
+            obj = app.SendPerformance(ROOT / 'icon.png', settings_path=self.settings_path)
         self.addCleanup(icon.call_args.kwargs['icon'].close)
         self.addCleanup(obj.serial.close)
         return obj
@@ -98,7 +103,7 @@ function Get-CimInstance {
     def test_menu_task_and_exit_callbacks(self):
         # Iconの生成引数から、実際のMenuItemに登録されたコールバックを呼ぶ。
         with patch.object(app, 'Icon') as icon:
-            obj = app.SendPerformance(ROOT / 'icon.png')
+            obj = app.SendPerformance(ROOT / 'icon.png', settings_path=self.settings_path)
         self.addCleanup(obj.serial.close)
         self.addCleanup(icon.call_args.kwargs['icon'].close)
         items = list(icon.call_args.kwargs['menu'].items)
@@ -235,6 +240,7 @@ class ExecutableTests(unittest.TestCase):
             (ROOT / 'src' / 'config_dialog.py').stat().st_mtime,
             (ROOT / 'src' / 'disk_diagnostics.py').stat().st_mtime,
             (ROOT / 'src' / '__init__.py').stat().st_mtime,
+            (ROOT / 'src' / 'settings.py').stat().st_mtime,
             (ROOT / 'Build.bat').stat().st_mtime,
         ):
             raise unittest.SkipTest('exeがソースより古い。再ビルド後に確認する')

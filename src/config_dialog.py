@@ -1,6 +1,6 @@
 """Tk操作をメインスレッドに集約する出力設定画面。"""
 import tkinter as tk
-from tkinter import ttk
+from tkinter import messagebox, ttk
 
 OUTPUT_CHOICES = ('CPU', 'メモリ', 'GPU', 'ディスクのアクティブ時間')
 
@@ -35,10 +35,14 @@ def show_output_config(outputs, on_apply, stop_event, focus_event, master=None):
             root.destroy()
 
         def apply():
-            on_apply(tuple(variable.get() for variable in variables))
+            try:
+                on_apply(tuple(variable.get() for variable in variables))
+            except (OSError, ValueError) as error:
+                messagebox.showerror('設定を保存できません', str(error), parent=root)
+                return
             close()
 
-        ttk.Label(frame, text='設定はアプリ終了まで有効です。').grid(
+        ttk.Label(frame, text='適用するとsetting.jsonに保存します。').grid(
             row=4, column=0, columnspan=2, pady=(12, 4))
         ttk.Button(frame, text='適用', command=apply).grid(row=5, column=0, pady=(8, 0))
         ttk.Button(frame, text='キャンセル', command=close).grid(row=5, column=1, pady=(8, 0))

@@ -9,15 +9,19 @@ import argparse
 import logging
 import serial
 from pathlib import Path
-from src.config_dialog import OUTPUT_CHOICES, run_config_loop
+from src.config_dialog import run_config_loop
+from src.settings import get_setting_path, load_outputs, save_outputs, validate_outputs
 
 class SendPerformance:
-    def __init__(self, image, port='COM15', baudrate=115200):
+    def __init__(self, image, port='COM15', baudrate=115200, settings_path=None):
         self.status = False
         self.serial = serial.Serial(port=None, baudrate=baudrate, write_timeout=1)
         self.serial.port = port
         self.serial_lock = threading.Lock()
-        self.outputs = ('CPU', 'メモリ', 'GPU')
+        self.settings_path = Path(settings_path) if settings_path is not None else get_setting_path(
+            __file__, globals().get('__compiled__'),
+        )
+        self.outputs = load_outputs(self.settings_path)
         self.config_stop = threading.Event()
         self.config_requested = threading.Event()
 
@@ -48,10 +52,9 @@ class SendPerformance:
 
     def setOutputs(self, outputs):
         """3出力を一括更新する。不正な設定は送信へ反映しない。"""
-        outputs = tuple(outputs)
-        if len(outputs) != 3 or any(name not in OUTPUT_CHOICES for name in outputs):
-            raise ValueError('出力候補から3つ選択してください')
+        outputs = validate_outputs(outputs)
         with self.serial_lock:
+            save_outputs(self.settings_path, outputs)
             self.outputs = outputs
 
     def getOutputs(self):

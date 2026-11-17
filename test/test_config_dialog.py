@@ -10,7 +10,7 @@ from src import config_dialog as dialog
 
 
 class DialogTests(unittest.TestCase):
-    def run_dialog(self, action):
+    def run_dialog(self, action, apply_error=None):
         root = Mock()
         variables = [Mock(), Mock(), Mock()]
         for variable, value in zip(variables, ('ディスクのアクティブ時間', 'CPU', 'CPU')):
@@ -21,7 +21,7 @@ class DialogTests(unittest.TestCase):
             buttons[kwargs['text']] = kwargs['command']
             return Mock()
         root.mainloop.side_effect = lambda: action(root, buttons, stop, focus)
-        on_apply = Mock()
+        on_apply = Mock(side_effect=apply_error)
         with patch.object(dialog.tk, 'Tk', return_value=root), \
              patch.object(dialog.tk, 'StringVar', side_effect=variables), \
              patch.object(dialog.ttk, 'Frame'), patch.object(dialog.ttk, 'Label'), \
@@ -39,6 +39,16 @@ class DialogTests(unittest.TestCase):
         root, apply = self.run_dialog(lambda root, buttons, stop, focus: buttons['適用']())
         apply.assert_called_once_with(('ディスクのアクティブ時間', 'CPU', 'CPU'))
         root.destroy.assert_called_once()
+
+    def test_save_error_keeps_dialog_open(self):
+        def action(root, buttons, stop, focus):
+            buttons['適用']()
+            root.destroy.assert_not_called()
+            buttons['キャンセル']()
+        with patch.object(dialog.messagebox, 'showerror') as error:
+            root, apply = self.run_dialog(action, apply_error=PermissionError('denied'))
+        error.assert_called_once()
+        self.assertEqual(error.call_args.kwargs['parent'], root)
 
     def test_cancel_does_not_apply(self):
         root, apply = self.run_dialog(lambda root, buttons, stop, focus: buttons['キャンセル']())

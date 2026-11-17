@@ -20,6 +20,7 @@
 | serial | 未接続状態で生成し、runProgramで開くSerialオブジェクト |
 | serial_lock | Taskと定期処理のシリアル書き込みを直列化 |
 | icon | pystrayのトレイオブジェクト |
+| src/settings.py | 保存先解決、3枠の検証、設定読込、一時ファイルからの置換保存 |
 | src/__init__.py | 補助モジュールをsrcパッケージとして扱う |
 | src/config_dialog.py | run_config_loopで表示要求を処理し、show_output_configで3つのComboboxを表示 |
 | outputs | 3つの指標名を保持するtuple。候補はCPU・メモリ・GPU・ディスクのアクティブ時間。初期値はCPU・メモリ・GPU |
@@ -33,14 +34,14 @@
 | icon.png | PILで開くトレイ用画像 |
 
 ## データ・保存形式
-送信はASCIIの3数値、カンマ区切り、行末CRLF。初期順序はCPU・メモリ・GPU。Configで3枠を選択でき、重複を許可する。永続データ、DB、設定ファイルは存在しない。起動引数はプロセス内だけで使用する。
+送信はASCIIの3数値、カンマ区切り、行末CRLF。初期順序はCPU・メモリ・GPU。Configで3枠を選択でき、重複を許可する。設定はUTF-8のsetting.jsonにoutputs配列（有効な指標名3個）として保存する。保存先はexe横、Python実行時はメインスクリプト横。DBは使用しない。COM等の起動引数はプロセス内だけで使用する。
 
 ## 主要な処理
 | メソッド | 引数・戻り値 | 処理・副作用・主な例外 |
 | --- | --- | --- |
 | __init__ | image, port=COM15, baudrate=115200 / None | Serial・ロック・画像・メニューを準備。画像読み込み等の例外は伝播 |
 | doTask | なし / None | CPU・メモリ・GPUと、選択時だけディスクのアクティブ時間を取得。計測開始前にロック内で設定を取得し、3列を組み立ててロック内でwrite。SerialException等は伝播 |
-| setOutputs | outputs / None | 指標名3個を検証し、ロック内で一括反映。不正値はValueError |
+| setOutputs | outputs / None | 指標名3個を検証し、ロック内で保存に成功してから一括反映。不正値はValueError、保存失敗はOSError。GUIで表示する |
 | getOutputs | なし / tuple | ロック内で現設定を返す |
 | showConfig | なし / None | Eventで表示要求。表示中は前面化。終了要求後は無視 |
 | getDiskUsage | なし / 数値 | CIMの物理ディスク（_Total除外）から100-PercentIdleTimeの最大値を取得し0～100に制限。OS・サブプロセス・変換エラーは0 |

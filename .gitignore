@@ -4,3 +4,4 @@ __pycache__/
 nuitka-crash-report.xml
 *.lnk
 *.log
+/setting.json

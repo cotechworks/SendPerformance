@@ -1,5 +1,6 @@
 """ディスクアクティブ時間の取得・範囲・3列送信を検証する。"""
 import subprocess
+import tempfile
 import sys
 import unittest
 from pathlib import Path
@@ -12,6 +13,11 @@ import serial
 
 
 class DiskTests(unittest.TestCase):
+    def setUp(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.settings_path = Path(folder.name) / 'setting.json'
+
     def test_values_are_clamped(self):
         for value, expected in [('0', 0), ('42.5', 42.5), ('100', 100), ('-8', 0), ('120', 100)]:
             with self.subTest(value=value), patch.object(
@@ -66,7 +72,7 @@ function Get-CimInstance {
 
     def make_instance(self):
         with patch.object(app, 'Icon') as icon:
-            obj = app.SendPerformance(Path(__file__).resolve().parents[1] / 'icon.png')
+            obj = app.SendPerformance(Path(__file__).resolve().parents[1] / 'icon.png', settings_path=self.settings_path)
         self.addCleanup(icon.call_args.kwargs['icon'].close)
         self.addCleanup(obj.serial.close)
         return obj

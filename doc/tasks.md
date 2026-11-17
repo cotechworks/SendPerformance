@@ -16,13 +16,10 @@
 - コマンド、結果、未実施理由、利用者確認日と結果を備考に記録する。
 
 ## 未完了タスク
-| ID | タスク | 状態 | 関連決定 | 備考 |
-| --- | --- | --- | --- | --- |
-| T-016 | src移動後のexe再ビルド・利用者確認 | 未確認 | D-009 | 対象T-015。Build.batで再ビルドし、exeの--help・--diagnose-disk、Config表示・適用・Exit、COM実機送信を確認する。今回exe再ビルドと実機操作は未実施 |
-
+なし。
 
 ## 次に着手するタスク
-T-016でsrc移動後のexeを再ビルド・確認する。以降の実装時もtest/の自動テストを実行する。
+未完了タスクはない。以降の実装時もtest/の自動テストを実行する。
 
 ## 保留事項
 - 対応環境・許容送信周期・切断時対応の要件整理は未決定。
@@ -47,4 +44,8 @@ T-016でsrc移動後のexeを再ビルド・確認する。以降の実装時も
 | T-011 | ディスクのアクティブ時間の利用者確認 | 完了 | D-008 | 対象T-010、負荷ツールT-012。2026-11-17、利用者より最新ビルドでは正常動作との報告を受領。負荷中の取得・出力3の追従を確認完了。ログでも22:20:45以降に82～88%の取得・送信を確認。以前はビルド前のexeで検証していた可能性があるが、原因としては未確定 |
 | T-013 | ディスク値とデバイス表示の不一致の切り分け | 完了 | D-008 | 対象T-014。ソース・診断exeの負荷追従、通常ログの設定とTXを照合。2026-11-17、利用者より最新ビルドの正常動作を確認。旧exeを検証していた可能性を原因候補として記録し、再現症状は解消として終了。旧exe使用の事実・根本原因は未確定 |
 | T-015 | 補助Pythonモジュールのsrc移動 | 完了 | D-009 | 2026-11-17。src/config_dialog.py・src/disk_diagnostics.pyへ移動し、src/__init__.py追加。importとテスト参照・exe鮮度判定を更新。.venv/Scripts/python.exe -B -W error::ResourceWarning -m unittest discover -s test -vで37件成功、旧exe群1グループスキップ。SendPerformance.py --help成功。exe再ビルドはT-016 |
+| T-016 | src移動後のexe再ビルド・利用者確認 | 完了 | D-009 | 対象T-015。Build.batでの再ビルド、exeの--help・--diagnose-disk、Config表示・適用・Exit、COM実機送信が確認対象。2026-11-17、利用者から「T-016完了」の報告を受領し、確認完了として記録。setting.json保存・復元はT-019で別途確認 |
 | T-017 | 実行時requirements.txtの作成 | 完了 | なし | 2026-11-17の利用者指示。現在のimportと仮想環境に基づきpystray・Pillow・schedule・psutil・pyserialの直接依存5件を固定。requirements-build.txtはビルド専用のまま維持。固定版と導入版の一致・アプリimport・pip check成功。依存の追加・更新は未実施。新規環境での再構築は未確認 |
+| T-018 | Configのsetting.json保存・復元 | 完了 | D-010 | 2026-11-17。src/settings.pyを追加し、起動時読込、適用時の置換保存、保存失敗通知を実装。test/test_settings.py追加、既存テストを一時ファイルで分離。.venv/Scripts/python.exe -B -W error::ResourceWarning -m unittest discover -s test -vで48件成功、旧exe群1グループスキップ。exe実保存はT-019 |
+| T-020 | Nuitka版setting.json保存先の修正 | 完了 | D-010 | 2026-11-17。containing_dirではなくsys.argv[0]の親を保存先に変更。distとSendPerformance.distが異なる回帰ケースをtest/test_settings.pyに追加。exeは未再ビルド、利用者確認はT-019 |
+| T-019 | setting.json保存・復元の利用者確認 | 完了 | D-010 | 対象T-018・T-020。Python保存先の確認後、exeのdist/直下への保存を修正。2026-11-17、利用者から「T-019完了」の報告を受領。exe横への保存、別作業フォルダからの起動、再起動復元、キャンセル、書込失敗時の確認を完了として記録 |
