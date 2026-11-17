@@ -16,10 +16,13 @@
 - コマンド、結果、未実施理由、利用者確認日と結果を備考に記録する。
 
 ## 未完了タスク
-なし。
+| ID | タスク | 状態 | 関連決定 | 備考 |
+| --- | --- | --- | --- | --- |
+| T-024 | 起動・配布バッチの利用者確認 | 未確認 | D-012 | 対象T-023。Start.batの通常起動・Config・COM送信・Exit、ZIP展開先でexeが起動することを確認。--helpとZIP内容は開発側検証済み |
+
 
 ## 次に着手するタスク
-未完了タスクはない。以降の実装時もtest/の自動テストを実行する。
+T-024でStart.batの通常起動とZIP展開後の動作を確認する。以降の実装時もtest/の自動テストを実行する。
 
 ## 保留事項
 - 対応環境・許容送信周期・切断時対応の要件整理は未決定。
@@ -49,3 +52,6 @@
 | T-018 | Configのsetting.json保存・復元 | 完了 | D-010 | 2026-11-17。src/settings.pyを追加し、起動時読込、適用時の置換保存、保存失敗通知を実装。test/test_settings.py追加、既存テストを一時ファイルで分離。.venv/Scripts/python.exe -B -W error::ResourceWarning -m unittest discover -s test -vで48件成功、旧exe群1グループスキップ。exe実保存はT-019 |
 | T-020 | Nuitka版setting.json保存先の修正 | 完了 | D-010 | 2026-11-17。containing_dirではなくsys.argv[0]の親を保存先に変更。distとSendPerformance.distが異なる回帰ケースをtest/test_settings.pyに追加。exeは未再ビルド、利用者確認はT-019 |
 | T-019 | setting.json保存・復元の利用者確認 | 完了 | D-010 | 対象T-018・T-020。Python保存先の確認後、exeのdist/直下への保存を修正。2026-11-17、利用者から「T-019完了」の報告を受領。exe横への保存、別作業フォルダからの起動、再起動復元、キャンセル、書込失敗時の確認を完了として記録 |
+| T-021 | icon.pngからexeアイコンを生成・埋め込み | 完了 | D-011 | 2026-11-17。Build.batでPillowから7サイズのICOを生成し、Nuitkaで埋め込み。ビルド成功、Adding 7 iconsを確認。test/test_executable_icon.py追加。ICOの複数サイズ・exeのアイコンリソースを検証し、全53件成功、スキップなし。実画面はT-022 |
+| T-022 | exeアイコンの利用者確認 | 完了 | D-011 | 対象T-021。dist/SendPerformance.dist/SendPerformance.exeをエクスプローラーで表示し、icon.png由来のアイコンになっていることを確認する。2026-11-17、利用者から「T-022完了」の報告を受領し、表示確認完了として記録 |
+| T-023 | Start.bat・Package.batの対象修正・検証 | 完了 | D-012 | 2026-11-17。別プロジェクト名を本プロジェクトに置換、Startの引数伝播を追加。test/test_batch_scripts.py追加。.venv/Scripts/python.exe -B -m unittest discover -s test -p test_batch_scripts.py -vで6件成功。実Package.batでdist/SendPerformance.zip作成、948ファイルの一致とCRC検証成功（14,487,497bytes）。通常起動のCOM操作・展開先実行はT-024 |

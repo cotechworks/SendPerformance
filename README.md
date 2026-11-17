@@ -24,7 +24,9 @@ WindowsのCPU・メモリ・GPU使用率を取得し、COMポートへASCII文�
 | src/__init__.py | 補助モジュールのパッケージ |
 | src/settings.py | setting.jsonの保存・復元と保存先解決 |
 | icon.png | トレイ画像。スクリプトと同じ場所から読み込む |
+| Start.bat | Python版を起動し、引数と終了コードを引き継ぐ |
 | Build.bat | Nuitka standaloneビルド |
+| Package.bat | ビルド済み配布フォルダ全体をZIP化 |
 | requirements.txt | 実行時の直接依存とバージョン |
 | requirements-build.txt | Nuitka 4.3.5の指定 |
 | doc/ | 要件・構成・決定・タスク |
@@ -61,6 +63,14 @@ requirements.txtには現在の仮想環境で使用する実行時の直接依�
 | --port | COM15 | 送信先。受信機に割り当てられたポートを指定する |
 | --baudrate | 115200 | 通信速度。受信側と一致させる |
 | --help | なし | ヘルプを表示して終了する |
+
+Start.batからも起動できる。バッチ自身のフォルダへ移動し、.venvのPythonを優先する。.venvがなければPATHのpythonを使う。引数はそのままメインへ渡し、異常終了時はメッセージと一時停止でエラーを確認できる。
+
+```powershell
+.\Start.bat
+.\Start.bat --port COM15 --baudrate 115200
+.\Start.bat --help
+```
 
 ## 出力設定
 1. トレイアイコンを右クリックし、Configを選択する。
@@ -109,13 +119,24 @@ WindowsのWin32_PerfFormattedData_PerfDisk_PhysicalDiskから各ディスクのP
 | --windows-console-mode=attach | 既存コンソールへの接続 |
 | --include-module=pystray._win32 | Windowsトレイ実装を含める |
 | --enable-plugin=tk-inter | Tkinter・Tcl/Tkを同梱する |
-| --include-data-files=icon.png=icon.png | PNG画像を同梱 |
+| --include-data-files=icon.png=icon.png | トレイ用のPNG画像を同梱 |
+| --windows-icon-from-ico=dist/SendPerformance.ico | PNGから生成したアイコンをexeに埋め込む |
 | --output-dir=dist | 出力先 |
 | --assume-yes-for-downloads | 必要なツールのダウンロード確認を自動承諾 |
+
+Build.batは既存のPillowでicon.pngからdist/SendPerformance.icoを生成する。16・24・32・48・64・128・256pxを指定し、exeへ埋め込む。PNGを更新した場合はBuild.batで再生成・再ビルドする。トレイ画像も引き続きicon.pngを使用する。
 
 ビルド環境にはNuitka対応のCコンパイラと、キャッシュへの書き込み権限が必要。初回はツール取得のためネットワーク接続が必要になる場合がある。
 
 `dist\SendPerformance.dist\SendPerformance.exe` を起動する。配布・バックアップは **SendPerformance.distフォルダ全体** を対象とし、exeだけを抜き出さない。配布先にもCOM機器・ドライバー・PowerShellが必要。VC++ランタイムの同梱状況と配布先への導入要否は、ビルドログと配布先で確認する。
+
+配布ZIPの作成:
+```powershell
+.\Package.bat
+```
+Package.batはdist/SendPerformance.dist/SendPerformance.exeの存在を確認し、フォルダ内のDLL・Tcl/Tk・画像等をすべてdist/SendPerformance.zipへ格納する。ビルドは実行しないため、最新版の配布前にはBuild.batを実行する。
+ZIP内はexeを直下に置く構成で、配布先のフォルダへ全体を展開して起動する。配布フォルダ内のsetting.jsonやログが存在すれば、それらも含まれるため配布前に内容を確認する。
+ZIPは一時ファイルへ作成してから既存ZIPと置き換える。作成失敗時は従来のZIPを維持し、一時ZIPを削除する。結果表示後に一時停止する。
 
 ## 運用と障害対応
 | 操作・症状 | 対応・現行の挙動 |
@@ -216,6 +237,15 @@ SendPerformance.pyをルートに残し、補助モジュールをsrcパッケ�
 
 ### 設定保存追加後の検証（2026-11-17）
 同じunittestコマンドで48件成功、旧exeのテスト群は1グループスキップ。保存と再起動復元、日本語・順序・重複、Python/Nuitka/frozenの保存先、欠損・破損JSON、置換失敗時の旧ファイル保持・一時ファイル削除、GUIでの保存失敗を検証した。Pythonでの保存先は利用者確認済み。exeではdist/直下に生成される報告があり、起動exeのsys.argv[0]を基準とするよう修正した。2026-11-17、利用者からT-019完了の報告を受領。修正後exeでの保存先・再起動復元・キャンセル・保存失敗時の確認は完了済み。
+
+### exeアイコン追加後の検証（2026-11-17）
+Build.batで再ビルド成功。icon.pngから生成した7サイズのアイコンをexeへ埋め込んだ。
+test/test_executable_icon.pyでICOの複数サイズとWindows APIによるexeアイコンリソースを確認し、全53件成功、スキップなし。
+2026-11-17、利用者からT-022完了の報告を受領し、エクスプローラー上のexeアイコン表示を確認済み。
+
+### 起動・配布バッチの検証（2026-11-17）
+test/test_batch_scripts.pyの6件が成功した。別作業フォルダ、日本語・空白パス、引数、終了コード、ZIP全体格納・既存ZIP更新・失敗時の維持と一時ファイル削除を確認した。
+実Package.batでもZIPを生成し、948ファイルの一致とCRCを検証した。Start.batは実プロジェクトの--helpで確認し、COMを使う通常起動は実施していない。
 
 ## 管理資料
 - [要件](doc/requirements.md)

@@ -25,7 +25,9 @@
 | src/config_dialog.py | run_config_loopで表示要求を処理し、show_output_configで3つのComboboxを表示 |
 | outputs | 3つの指標名を保持するtuple。候補はCPU・メモリ・GPU・ディスクのアクティブ時間。初期値はCPU・メモリ・GPU |
 | config_stop / config_requested | 終了要求・表示または前面化要求をスレッド間で渡すEvent |
-| Build.bat | .venvのPythonからNuitkaを実行。tk-interプラグインでTcl/Tkを同梱 |
+| Start.bat | ルートのSendPerformance.pyを.venv優先で起動し、引数・終了コードを伝播 |
+| Package.bat | dist/SendPerformance.dist全体を一時ZIPに格納しdist/SendPerformance.zipへ置換 |
+| Build.bat | .venvのPythonからNuitkaを実行。tk-interプラグインでTcl/Tkを同梱。PillowでPNGからICOを生成してexeに埋め込む |
 | src/disk_diagnostics.py | COM未接続の診断。実際のdoTaskをloop://へ送信し、CPU・メモリ・ディスクの5行を表示 |
 | test/disk_load.py | T-011用の時間・容量制限付きディスク負荷。標準ライブラリのみ。専用一時ファイルを削除して終了 |
 | test/test_disk_load.py | 上限検証、既存ファイル保持、空き容量不足、Ctrl+C・例外時の削除を確認 |

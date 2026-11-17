@@ -19,6 +19,8 @@
 | D-008 | 2026-11-17 | 採用 | ディスクのアクティブ時間を出力候補に追加する |
 | D-009 | 2026-11-17 | 採用 | メイン以外の実行用モジュールをsrc/へ移動する |
 | D-010 | 2026-11-17 | 採用 | Configを実行ファイル横のsetting.jsonへ保存する |
+| D-011 | 2026-11-17 | 採用 | exeアイコンにicon.pngを使用する |
+| D-012 | 2026-11-17 | 採用 | Start・Packageバッチの対象をSendPerformanceへ変更する |
 
 ## 各決定の詳細
 ### D-001
@@ -81,6 +83,18 @@
 - 保存先: Nuitkaでは起動したexeのsys.argv[0]の親、frozenではsys.executableの親、PythonではSendPerformance.pyの親。
 - 影響: src/settings.pyを追加。JSONはoutputs配列のみ。設定ファイルがなければ初期値。破損時は元ファイルを残して初期値へ。保存失敗時は旧設定を維持しGUIで通知する。新規依存はない。
 - 検証: Python側で48件成功。利用者がPythonでの保存先を確認。exeでdist/直下に保存された報告を受け、containing_dirではなくsys.argv[0]を使うよう修正した。2026-11-17、T-019の完了報告を受領し、修正後exeでの保存・復元を利用者確認済み。
+
+### D-011
+- 日付・状態: 2026-11-17、採用。
+- 内容・承認根拠: 利用者の「ビルドしたexeファイルのアイコンにicon.pngを設定」指示。
+- 実装: 既存のPillowで複数サイズのICOを生成し、Nuitkaの--windows-icon-from-icoで埋め込む。トレイPNGは従来どおり同梱する。
+- 影響: Build.bat、test/test_executable_icon.py、資料。新規依存はない。
+
+### D-012
+- 日付・状態: 2026-11-17、採用。
+- 内容・承認根拠: 利用者のStart.bat・Package.bat修正指示。
+- 実装: StartはSendPerformance.pyを.venv優先で実行し引数を引き継ぐ。Packageはdist/SendPerformance.dist全体をdist/SendPerformance.zipへ格納する。ZIPの一時作成・置換と失敗時の保護は維持する。
+- 影響: バッチ2件、テストと資料。自動ビルド・依存追加・コミットは行わない。
 
 ## 未決定事項
 切断時の復旧、送信周期、GPU指標の受け入れ基準、配布先の対応環境、依存バージョン固定は未決定。新たな設計変更は今回採用しない。
