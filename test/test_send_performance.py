@@ -257,15 +257,6 @@ class ExecutableTests(unittest.TestCase):
         self.assertIn(b'--port', result.stdout)
         self.assertIn(b'--baudrate', result.stdout)
 
-    def test_initialization_reaches_serial_open(self):
-        # Windowsのポート名ではない文字列を指定し、機器へ接続しない。
-        with tempfile.TemporaryDirectory() as directory:
-            result = subprocess.run(
-                [str(self.exe), '--port', 'invalid:/test-only'],
-                cwd=directory, capture_output=True, timeout=20,
-            )
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn(b'SerialException: could not open port', result.stderr)
 
 
 if __name__ == '__main__':

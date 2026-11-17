@@ -20,7 +20,7 @@
 | serial | 未接続状態で生成し、runProgramで開くSerialオブジェクト |
 | serial_lock | Taskと定期処理のシリアル書き込みを直列化 |
 | icon | pystrayのトレイオブジェクト |
-| src/settings.py | 保存先解決、3枠の検証、設定読込、一時ファイルからの置換保存 |
+| src/settings.py | 保存先解決、3枠とCOM形式の検証、outputsとportの設定読込、一時ファイルからの置換保存 |
 | src/__init__.py | 補助モジュールをsrcパッケージとして扱う |
 | src/config_dialog.py | run_config_loopで表示要求を処理し、show_output_configで3つのComboboxを表示 |
 | outputs | 3つの指標名を保持するtuple。候補はCPU・メモリ・GPU・ディスクのアクティブ時間。初期値はCPU・メモリ・GPU |
@@ -36,21 +36,23 @@
 | icon.png | PILで開くトレイ用画像 |
 
 ## データ・保存形式
-送信はASCIIの3数値、カンマ区切り、行末CRLF。初期順序はCPU・メモリ・GPU。Configで3枠を選択でき、重複を許可する。設定はUTF-8のsetting.jsonにoutputs配列（有効な指標名3個）として保存する。保存先はexe横、Python実行時はメインスクリプト横。DBは使用しない。COM等の起動引数はプロセス内だけで使用する。
+送信はASCIIの3数値、カンマ区切り、行末CRLF。初期順序はCPU・メモリ・GPU。Configで3枠を選択でき、重複を許可する。設定はUTF-8のsetting.jsonにoutputs配列（有効な指標名3個）として保存する。保存先はexe横、Python実行時はメインスクリプト横。DBは使用しない。COMはportキーにも保存する。portがない旧JSONではCOM15を採用する。--portは保存値より優先し、通信速度はプロセス内だけで使用する。
 
 ## 主要な処理
 | メソッド | 引数・戻り値 | 処理・副作用・主な例外 |
 | --- | --- | --- |
-| __init__ | image, port=COM15, baudrate=115200 / None | Serial・ロック・画像・メニューを準備。画像読み込み等の例外は伝播 |
+| __init__ | image, port=None, baudrate=115200, settings_path=None / None | Serial・ロック・画像・メニューを準備。画像読み込み等の例外は伝播 |
 | doTask | なし / None | CPU・メモリ・GPUと、選択時だけディスクのアクティブ時間を取得。計測開始前にロック内で設定を取得し、3列を組み立ててロック内でwrite。SerialException等は伝播 |
 | setOutputs | outputs / None | 指標名3個を検証し、ロック内で保存に成功してから一括反映。不正値はValueError、保存失敗はOSError。GUIで表示する |
+| getPort | なし / str | ロック内で現在のCOM設定を返す |
+| applyConfig | outputs, port / None | 送信ロック内で新ポート接続と保存の成功後に接続・出力を切替。失敗時は新接続を閉じて旧接続・設定を維持 |
 | getOutputs | なし / tuple | ロック内で現設定を返す |
 | showConfig | なし / None | Eventで表示要求。表示中は前面化。終了要求後は無視 |
 | getDiskUsage | なし / 数値 | CIMの物理ディスク（_Total除外）から100-PercentIdleTimeの最大値を取得し0～100に制限。OS・サブプロセス・変換エラーは0 |
 | getGpuUsage | なし / 数値 | PowerShellを最大5秒待機。合計したエンジン使用率の最大を0～100に制限。OSError、SubprocessError、ValueErrorを0へ変換 |
 | runSchedule | なし / None | 0.1秒間隔のジョブをグローバルscheduleへ登録しrun_pendingを実行。doTask例外は捕捉しない |
 | stopProgram | icon / None | status=False、Config終了要求、トレイ停止 |
-| runProgram | なし / None | COM接続、ワーカー開始、トレイをrun_detachedで開始してTkループを実行。finallyでConfig停止要求、ワーカーjoin、トレイ停止、ポートclose |
+| runProgram | なし / None | COM接続を試行（失敗時は接続待ちとConfig要求）、ワーカー開始、トレイをrun_detachedで開始してTkループを実行。finallyでConfig停止要求、ワーカーjoin、トレイ停止、ポートclose |
 
 起動引数を解析し、スクリプトと同じ場所のicon.pngを渡してrunProgramを呼ぶ。
 
@@ -65,16 +67,21 @@ flowchart TD
   TrayExit["トレイ Exit"] --> Stop["stopProgram"]
 ```
 
-状態一覧は「準備済み」「稼働中」「終了処理中」「終了」「起動失敗」とする。送信スレッド単体の異常停止はstatusで表現されない。
+状態一覧は「準備済み」「稼働中」「接続待ち」「終了処理中」「終了」「起動失敗」とする。シリアル接続・送信例外は接続待ちとして扱う。
 ```mermaid
 stateDiagram-v2
   state "準備済み" as Ready
   state "稼働中" as Running
+  state "接続待ち" as Waiting
   state "終了処理中" as Closing
   state "終了" as Closed
   state "起動失敗" as Failed
   Ready --> Running: COM接続成功・ワーカー開始
-  Ready --> Failed: COM接続例外
+  Ready --> Waiting: COM接続失敗・Config要求
+  Waiting --> Running: Configで接続成功
+  Running --> Waiting: COM送信失敗・切断
+  Waiting --> Closing: Exit
+  Ready --> Failed: その他の起動例外
   Running --> Closing: Exitまたはトレイ実行終了
   Closing --> Closed: ワーカー終了待ち・COM切断
 ```
@@ -98,5 +105,5 @@ stateDiagram-v2
 - 計測・PowerShell起動は同期処理で、固定周期や即時終了を保証しない。
 - ロック対象はwriteだけであり、指標取得は同時実行され得る。
 - 起動時のCOM接続とワーカー開始はトレイのtry/finallyより前にある。
-- シリアル切断の自動再接続やジョブ解除はなく、1プロセスでの再実行・複数インスタンス管理は未整備。
+- シリアル切断の自動再接続はなく、Config適用で手動接続する。ジョブ解除はなく、1プロセスでの再実行・複数インスタンス管理は未整備。
 - 設計変更案の採否は[決定記録](decisions.md)で扱い、現行実装と区別する。

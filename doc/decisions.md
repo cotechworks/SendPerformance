@@ -21,6 +21,7 @@
 | D-010 | 2026-11-17 | 採用 | Configを実行ファイル横のsetting.jsonへ保存する |
 | D-011 | 2026-11-17 | 採用 | exeアイコンにicon.pngを使用する |
 | D-012 | 2026-11-17 | 採用 | Start・Packageバッチの対象をSendPerformanceへ変更する |
+| D-013 | 2026-11-17 | 採用 | ConfigからCOMポートを設定・保存する |
 
 ## 各決定の詳細
 ### D-001
@@ -95,6 +96,13 @@
 - 内容・承認根拠: 利用者のStart.bat・Package.bat修正指示。
 - 実装: StartはSendPerformance.pyを.venv優先で実行し引数を引き継ぐ。Packageはdist/SendPerformance.dist全体をdist/SendPerformance.zipへ格納する。ZIPの一時作成・置換と失敗時の保護は維持する。
 - 影響: バッチ2件、テストと資料。自動ビルド・依存追加・コミットは行わない。
+
+### D-013
+- 日付・状態: 2026-11-17、採用。
+- 内容・承認根拠: 利用者の「COMポートをconfigで設定できるようにしたい」指示。
+- 実装: 一覧と手入力に対応し、outputsとportをsetting.jsonへ保存する。--port優先、旧JSONのport欠損はCOM15。通信速度は従来の115200bpsを初期値として引数で指定する。
+- 接続切替: 新ポート接続・保存に成功してから旧接続を閉じる。未接続起動・送信失敗時はConfigから回復できる。自動再接続は追加しない。
+- 影響: SendPerformance.py、src/settings.py、src/config_dialog.py、test/、資料。新規依存なし。
 
 ## 未決定事項
 切断時の復旧、送信周期、GPU指標の受け入れ基準、配布先の対応環境、依存バージョン固定は未決定。新たな設計変更は今回採用しない。

@@ -10,18 +10,20 @@ import logging
 import serial
 from pathlib import Path
 from src.config_dialog import run_config_loop
-from src.settings import get_setting_path, load_outputs, save_outputs, validate_outputs
+from src.settings import get_setting_path, load_config, save_outputs, validate_outputs, validate_port
 
 class SendPerformance:
-    def __init__(self, image, port='COM15', baudrate=115200, settings_path=None):
+    def __init__(self, image, port=None, baudrate=115200, settings_path=None):
         self.status = False
         self.serial = serial.Serial(port=None, baudrate=baudrate, write_timeout=1)
-        self.serial.port = port
         self.serial_lock = threading.Lock()
         self.settings_path = Path(settings_path) if settings_path is not None else get_setting_path(
             __file__, globals().get('__compiled__'),
         )
-        self.outputs = load_outputs(self.settings_path)
+        config = load_config(self.settings_path)
+        self.outputs = config['outputs']
+        self.port = port if port is not None else config['port']
+        self.serial.port = self.port
         self.config_stop = threading.Event()
         self.config_requested = threading.Event()
 
@@ -38,6 +40,8 @@ class SendPerformance:
 
     def doTask(self):
         with self.serial_lock:
+            if not self.serial.is_open:
+                return
             outputs = self.outputs
         cpu = psutil.cpu_percent(interval=0.5)
         mem = psutil.virtual_memory()
@@ -47,14 +51,49 @@ class SendPerformance:
             values['ディスクのアクティブ時間'] = self.getDiskUsage()
         payload = (','.join(str(values[name]) for name in outputs) + '\r\n').encode('ascii')
         with self.serial_lock:
-            self.serial.write(payload)
+            if not self.serial.is_open:
+                return
+            try:
+                self.serial.write(payload)
+            except serial.SerialException as error:
+                logging.warning('COM送信失敗。Configで接続を確認してください: %s', error)
+                self.serial.close()
+                self.config_requested.set()
+                return
         logging.debug('outputs=%s TX=%r', outputs, payload)
 
     def setOutputs(self, outputs):
         """3出力を一括更新する。不正な設定は送信へ反映しない。"""
         outputs = validate_outputs(outputs)
         with self.serial_lock:
-            save_outputs(self.settings_path, outputs)
+            save_outputs(self.settings_path, outputs, port=self.port)
+            self.outputs = outputs
+
+    def getPort(self):
+        with self.serial_lock:
+            return self.port
+
+    def applyConfig(self, outputs, port):
+        """新しいポートを開き、保存に成功してから接続と設定を入れ替える。"""
+        outputs = validate_outputs(outputs)
+        port = validate_port(port)
+        with self.serial_lock:
+            previous = self.serial
+            replacement = None
+            try:
+                if port != self.port or not previous.is_open:
+                    replacement = serial.Serial(
+                        port=port, baudrate=previous.baudrate, write_timeout=1,
+                    )
+                save_outputs(self.settings_path, outputs, port=port)
+            except Exception:
+                if replacement is not None:
+                    replacement.close()
+                raise
+            if replacement is not None:
+                self.serial = replacement
+                previous.close()
+            self.port = port
             self.outputs = outputs
 
     def getOutputs(self):
@@ -136,7 +175,11 @@ class SendPerformance:
         self.icon.stop()
 
     def runProgram(self):
-        self.serial.open()
+        try:
+            self.serial.open()
+        except serial.SerialException as error:
+            logging.warning('COM接続失敗。Configでポートを指定してください: %s', error)
+            self.config_requested.set()
         self.status = True
 
         ## スケジュールの実行
@@ -148,6 +191,7 @@ class SendPerformance:
             self.icon.run_detached()
             run_config_loop(
                 self.config_stop, self.config_requested, self.getOutputs, self.setOutputs,
+                self.getPort, self.applyConfig,
             )
         finally:
             self.status = False
@@ -159,7 +203,7 @@ class SendPerformance:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--port', default='COM15', help='送信先COMポート（既定: COM15）')
+    parser.add_argument('--port', default=None, help='保存済みCOMポートを上書き指定（未設定時: COM15）')
     parser.add_argument('--baudrate', type=int, default=115200)
     parser.add_argument('--debug-log', type=Path, help='取得値と送信データを記録するログファイル')
     parser.add_argument('--diagnose-disk', action='store_true', help='COM接続せずCPU,メモリ,ディスクを5回取得して表示')

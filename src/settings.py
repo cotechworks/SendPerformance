@@ -2,6 +2,7 @@
 import json
 import logging
 import os
+import re
 from pathlib import Path
 import sys
 import tempfile
@@ -28,21 +29,35 @@ def validate_outputs(outputs):
     return tuple(outputs)
 
 
-def load_outputs(path):
+def validate_port(port):
+    if not isinstance(port, str) or not re.fullmatch(r'COM[1-9][0-9]*', port.strip(), re.IGNORECASE):
+        raise ValueError('COMポートをCOM15の形式で指定してください')
+    return port.strip().upper()
+
+
+def load_config(path):
     try:
         data = json.loads(Path(path).read_text(encoding='utf-8'))
         if not isinstance(data, dict):
             raise ValueError('設定はJSONオブジェクトで指定してください')
-        return validate_outputs(data.get('outputs'))
+        return {'outputs': validate_outputs(data.get('outputs')),
+                'port': validate_port(data.get('port', 'COM15'))}
     except FileNotFoundError:
-        return DEFAULT_OUTPUTS
+        return {'outputs': DEFAULT_OUTPUTS, 'port': 'COM15'}
     except (OSError, ValueError, UnicodeError) as error:
         logging.warning('設定を読み込めないため初期値を使用します: %s (%s)', path, error)
-        return DEFAULT_OUTPUTS
+        return {'outputs': DEFAULT_OUTPUTS, 'port': 'COM15'}
 
 
-def save_outputs(path, outputs):
+def load_outputs(path):
+    return load_config(path)['outputs']
+
+
+def save_outputs(path, outputs, port=None):
     outputs = validate_outputs(outputs)
+    data = {'outputs': list(outputs)}
+    if port is not None:
+        data['port'] = validate_port(port)
     path = Path(path)
     temporary = None
     try:
@@ -51,7 +66,7 @@ def save_outputs(path, outputs):
             prefix='.setting-', suffix='.tmp', delete=False,
         ) as stream:
             temporary = Path(stream.name)
-            json.dump({'outputs': list(outputs)}, stream, ensure_ascii=False, indent=2)
+            json.dump(data, stream, ensure_ascii=False, indent=2)
             stream.write('\n')
             stream.flush()
             os.fsync(stream.fileno())

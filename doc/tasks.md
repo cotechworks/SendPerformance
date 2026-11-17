@@ -1,5 +1,5 @@
 # タスク管理
-更新日: 2026-11-17
+更新日: 2026-11-18
 
 ## 目次
 - [運用ルール](#運用ルール)
@@ -18,11 +18,10 @@
 ## 未完了タスク
 | ID | タスク | 状態 | 関連決定 | 備考 |
 | --- | --- | --- | --- | --- |
-| T-024 | 起動・配布バッチの利用者確認 | 未確認 | D-012 | 対象T-023。Start.batの通常起動・Config・COM送信・Exit、ZIP展開先でexeが起動することを確認。--helpとZIP内容は開発側検証済み |
-
+なし。
 
 ## 次に着手するタスク
-T-024でStart.batの通常起動とZIP展開後の動作を確認する。以降の実装時もtest/の自動テストを実行する。
+未完了タスクはなし。以降の実装時もtest/の自動テストを実行する。
 
 ## 保留事項
 - 対応環境・許容送信周期・切断時対応の要件整理は未決定。
@@ -55,3 +54,7 @@ T-024でStart.batの通常起動とZIP展開後の動作を確認する。以降
 | T-021 | icon.pngからexeアイコンを生成・埋め込み | 完了 | D-011 | 2026-11-17。Build.batでPillowから7サイズのICOを生成し、Nuitkaで埋め込み。ビルド成功、Adding 7 iconsを確認。test/test_executable_icon.py追加。ICOの複数サイズ・exeのアイコンリソースを検証し、全53件成功、スキップなし。実画面はT-022 |
 | T-022 | exeアイコンの利用者確認 | 完了 | D-011 | 対象T-021。dist/SendPerformance.dist/SendPerformance.exeをエクスプローラーで表示し、icon.png由来のアイコンになっていることを確認する。2026-11-17、利用者から「T-022完了」の報告を受領し、表示確認完了として記録 |
 | T-023 | Start.bat・Package.batの対象修正・検証 | 完了 | D-012 | 2026-11-17。別プロジェクト名を本プロジェクトに置換、Startの引数伝播を追加。test/test_batch_scripts.py追加。.venv/Scripts/python.exe -B -m unittest discover -s test -p test_batch_scripts.py -vで6件成功。実Package.batでdist/SendPerformance.zip作成、948ファイルの一致とCRC検証成功（14,487,497bytes）。通常起動のCOM操作・展開先実行はT-024 |
+| T-025 | ConfigのCOM選択・保存・接続切替 | 完了 | D-013 | 2026-11-17。COM欄追加、一覧更新・手入力、outputsとport保存、起動時復元、引数優先、旧JSON互換、失敗時保護、接続待ちからの回復を実装。test/test_port_config.py追加と既存テスト更新。.venv/Scripts/python.exe -B -W error::ResourceWarning -m unittest discover -s testで70件成功、旧exe群1グループスキップ。実Tk COM適用・--help確認。実機・再ビルドはT-026 |
+| T-024 | 起動・配布バッチの利用者確認 | 完了 | D-012 | 対象T-023。Start.batの通常起動・Config・COM送信・Exit、ZIP展開先でexeが起動することを確認。--helpとZIP内容は開発側検証済み。2026-11-18、利用者から「T-024完了」の報告を受領し、確認完了として記録 |
+| T-026 | ConfigのCOM設定・再接続の利用者確認 | 完了 | D-013 | 対象T-025。2026-11-18、利用者よりビルド済みexeで全確認項目完了の報告を受領。COM一覧・手入力、実機切替、使用中ポート時の旧接続維持、再起動復元、起動失敗・切断後の再接続を確認済み。exeアイコン表示は別件T-027で管理 |
+| T-027 | エクスプローラーのexeアイコン非表示の確認 | 完了 | D-011 | 2026-11-18、利用者報告。dist/SendPerformance.dist/SendPerformance.exeはWindows APIでアイコン1グループを検出、ICO・exeアイコンのテスト2件成功。対象exeへのShell更新通知を実行。同日、利用者がZIP圧縮後にデスクトップへ展開したexeで正常なアイコン表示を確認。元の場所での非表示原因は未確定 |

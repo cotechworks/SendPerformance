@@ -10,11 +10,15 @@ from src import config_dialog as dialog
 
 
 class DialogTests(unittest.TestCase):
-    def run_dialog(self, action, apply_error=None):
+    def run_dialog(self, action, apply_error=None, port=None):
         root = Mock()
         variables = [Mock(), Mock(), Mock()]
         for variable, value in zip(variables, ('ディスクのアクティブ時間', 'CPU', 'CPU')):
             variable.get.return_value = value
+        if port is not None:
+            selected_port = Mock()
+            selected_port.get.return_value = 'COM9'
+            variables.append(selected_port)
         buttons = {}
         stop, focus = threading.Event(), threading.Event()
         def button(parent, **kwargs):
@@ -27,13 +31,29 @@ class DialogTests(unittest.TestCase):
              patch.object(dialog.ttk, 'Frame'), patch.object(dialog.ttk, 'Label'), \
              patch.object(dialog.ttk, 'Combobox') as combo, \
              patch.object(dialog.ttk, 'Button', side_effect=button):
-            dialog.show_output_config(('CPU', 'メモリ', 'GPU'), on_apply, stop, focus)
+            with patch.object(dialog.list_ports, 'comports', return_value=[]):
+                dialog.show_output_config(
+                    ('CPU', 'メモリ', 'GPU'), on_apply, stop, focus,
+                    port=port, on_apply_config=on_apply if port is not None else None,
+                )
         root.destroy.assert_called_once()
-        self.assertEqual(combo.call_count, 3)
-        for call in combo.call_args_list:
+        self.assertEqual(combo.call_count, 4 if port is not None else 3)
+        for call in combo.call_args_list[:3]:
             self.assertEqual(call.kwargs['state'], 'readonly')
             self.assertEqual(call.kwargs['values'], ('CPU', 'メモリ', 'GPU', 'ディスクのアクティブ時間'))
         return root, on_apply
+
+    def test_port_selection_is_applied_with_outputs(self):
+        root, apply = self.run_dialog(
+            lambda root, buttons, stop, focus: buttons['適用'](), port='COM15',
+        )
+        apply.assert_called_once_with(('ディスクのアクティブ時間', 'CPU', 'CPU'), 'COM9')
+
+    def test_cancel_port_does_not_apply(self):
+        root, apply = self.run_dialog(
+            lambda root, buttons, stop, focus: buttons['キャンセル'](), port='COM15',
+        )
+        apply.assert_not_called()
 
     def test_apply_selected_outputs(self):
         root, apply = self.run_dialog(lambda root, buttons, stop, focus: buttons['適用']())

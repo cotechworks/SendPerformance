@@ -1,11 +1,12 @@
 """Tk操作をメインスレッドに集約する出力設定画面。"""
 import tkinter as tk
 from tkinter import messagebox, ttk
+from serial.tools import list_ports
 
 OUTPUT_CHOICES = ('CPU', 'メモリ', 'GPU', 'ディスクのアクティブ時間')
 
 
-def show_output_config(outputs, on_apply, stop_event, focus_event, master=None):
+def show_output_config(outputs, on_apply, stop_event, focus_event, master=None, port=None, on_apply_config=None):
     root = tk.Toplevel(master) if master is not None else tk.Tk()
     root.title('Config')
     root.resizable(False, False)
@@ -27,6 +28,22 @@ def show_output_config(outputs, on_apply, stop_event, focus_event, master=None):
                 state='readonly', width=26,
             ).grid(row=index + 1, column=1, pady=4)
 
+        port_variable = None
+        if port is not None:
+            ttk.Label(frame, text='COMポート').grid(row=4, column=0, padx=(0, 12), pady=4)
+            port_variable = tk.StringVar(master=root, value=port)
+            port_box = ttk.Combobox(frame, textvariable=port_variable, state='normal', width=26)
+            def refresh_ports():
+                try:
+                    choices = {item.device for item in list_ports.comports()}
+                except OSError:
+                    choices = set()
+                choices.add(port_variable.get())
+                port_box['values'] = tuple(sorted(choices))
+            port_box.configure(postcommand=refresh_ports)
+            refresh_ports()
+            port_box.grid(row=4, column=1, pady=4)
+
         def close():
             nonlocal closed
             closed = True
@@ -36,16 +53,20 @@ def show_output_config(outputs, on_apply, stop_event, focus_event, master=None):
 
         def apply():
             try:
-                on_apply(tuple(variable.get() for variable in variables))
+                selected = tuple(variable.get() for variable in variables)
+                if port_variable is not None and on_apply_config is not None:
+                    on_apply_config(selected, port_variable.get())
+                else:
+                    on_apply(selected)
             except (OSError, ValueError) as error:
                 messagebox.showerror('設定を保存できません', str(error), parent=root)
                 return
             close()
 
         ttk.Label(frame, text='適用するとsetting.jsonに保存します。').grid(
-            row=4, column=0, columnspan=2, pady=(12, 4))
-        ttk.Button(frame, text='適用', command=apply).grid(row=5, column=0, pady=(8, 0))
-        ttk.Button(frame, text='キャンセル', command=close).grid(row=5, column=1, pady=(8, 0))
+            row=5, column=0, columnspan=2, pady=(12, 4))
+        ttk.Button(frame, text='適用', command=apply).grid(row=6, column=0, pady=(8, 0))
+        ttk.Button(frame, text='キャンセル', command=close).grid(row=6, column=1, pady=(8, 0))
         root.protocol('WM_DELETE_WINDOW', close)
 
         def poll():
@@ -71,7 +92,7 @@ def show_output_config(outputs, on_apply, stop_event, focus_event, master=None):
             root.destroy()
 
 
-def run_config_loop(stop_event, request_event, get_outputs, on_apply):
+def run_config_loop(stop_event, request_event, get_outputs, on_apply, get_port=None, on_apply_config=None):
     """非表示のTkルートを維持し、トレイからの表示要求を処理する。"""
     root = tk.Tk()
     root.withdraw()
@@ -84,6 +105,7 @@ def run_config_loop(stop_event, request_event, get_outputs, on_apply):
                 request_event.clear()
                 show_output_config(
                     get_outputs(), on_apply, stop_event, request_event, master=root,
+                    port=get_port() if get_port else None, on_apply_config=on_apply_config,
                 )
             root.after(100, poll)
         root.after(100, poll)
